@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparison - Smart Street Light Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">🌙 Smart Light</div>
+    <nav>
+      <a href="index.html" class="nav-item">📊 Dashboard</a>
+      <a href="realtime.html" class="nav-item">📈 Real-Time</a>
+      <a href="history.html" class="nav-item">📋 History</a>
+      <a href="energy.html" class="nav-item">⚡ Energy</a>
+      <a href="home.html" class="nav-item">🏠 Home</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 class="page-title">Data Correlation Analysis</h1>
+      <a href="home.html" class="home-link">← Home</a>
+    </div>
+
+    <div class="content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>📊 Total Records</h3>
+          <div class="stat-value" id="totalRecords">--</div>
+          <small>Data points</small>
+        </div>
+        <div class="stat-card">
+          <h3>🔗 Correlation Strength</h3>
+          <div class="stat-value" id="correlation">--</div>
+          <small>Lux-Brightness</small>
+        </div>
+        <div class="stat-card">
+          <h3>🌡️ Temp Range</h3>
+          <div class="stat-value" id="tempRange">--</div>
+          <small>Min - Max °C</small>
+        </div>
+        <div class="stat-card">
+          <h3>💧 Humidity Range</h3>
+          <div class="stat-value" id="humidityRange">--</div>
+          <small>Min - Max %</small>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Lux vs Brightness Correlation</h2>
+          <div class="chart-container"><canvas id="luxBrightChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Temperature vs Humidity Trend</h2>
+          <div class="chart-container"><canvas id="tempHumidChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>All Sensor Trends (Last 30)</h2>
+          <div class="chart-container"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Brightness vs Lux Distribution</h2>
+          <div class="chart-container"><canvas id="distributionChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from './config.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  Chart.defaults.color = '#888';
+  Chart.defaults.maintainAspectRatio = false;
+
+  const luxBrightChart = new Chart(document.getElementById('luxBrightChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Lux vs Brightness', data: [], backgroundColor: '#ec4899' }] },
+    options: { scales: { x: { title: { display: true, text: 'Lux Level' } }, y: { title: { display: true, text: 'Brightness %' } } } }
+  });
+
+  const tempHumidChart = new Chart(document.getElementById('tempHumidChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Temp vs Humidity', data: [], backgroundColor: '#06b6d4' }] },
+    options: { scales: { x: { title: { display: true, text: 'Temperature °C' } }, y: { title: { display: true, text: 'Humidity %' } } } }
+  });
+
+  const trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Temp', data: [], borderColor: '#ef4444', yAxisID: 'y' },
+        { label: 'Humidity', data: [], borderColor: '#3b82f6', yAxisID: 'y1' },
+        { label: 'Brightness', data: [], borderColor: '#fbbf24', yAxisID: 'y2' }
+      ] 
+    },
+    options: {
+      scales: {
+        y: { position: 'left', title: { display: true, text: 'Temp °C' } },
+        y1: { position: 'right', title: { display: true, text: 'Humidity %' }, grid: { drawOnChartArea: false } },
+        y2: { position: 'right', title: { display: true, text: 'Brightness %' }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+
+  const distributionChart = new Chart(document.getElementById('distributionChart'), {
+    type: 'bubble',
+    data: { datasets: [{ label: 'Brightness Distribution', data: [], backgroundColor: 'rgba(99, 102, 241, 0.5)' }] },
+    options: { scales: { x: { title: { display: true, text: 'Lux Level' } }, y: { title: { display: true, text: 'Brightness %' } } } }
+  });
+
+  const q = query(collection(db, "sensors-log", "history", "readings"), orderBy("timestamp", "desc"), limit(50));
+  onSnapshot(q, (snapshot) => {
+    const data = [];
+    snapshot.forEach(doc => data.unshift(doc.data()));
+
+    // Calculate stats
+    const temps = data.map(r => r.temp);
+    const humids = data.map(r => r.humidity);
+    const minTemp = Math.min(...temps).toFixed(1);
+    const maxTemp = Math.max(...temps).toFixed(1);
+    const minHumid = Math.min(...humids).toFixed(1);
+    const maxHumid = Math.max(...humids).toFixed(1);
+
+    // Correlation calculation (simple)
+    const lux = data.map(r => r.lux);
+    const bright = data.map(r => r.brightness);
+    const luxMean = lux.reduce((a, b) => a + b) / lux.length;
+    const brightMean = bright.reduce((a, b) => a + b) / bright.length;
+    const cov = lux.reduce((s, x, i) => s + (x - luxMean) * (bright[i] - brightMean), 0) / lux.length;
+    const luxStd = Math.sqrt(lux.reduce((s, x) => s + (x - luxMean) ** 2, 0) / lux.length);
+    const brightStd = Math.sqrt(bright.reduce((s, x) => s + (x - brightMean) ** 2, 0) / bright.length);
+    const corr = (cov / (luxStd * brightStd)).toFixed(2);
+
+    document.getElementById('totalRecords').textContent = data.length;
+    document.getElementById('correlation').textContent = corr;
+    document.getElementById('tempRange').textContent = `${minTemp} - ${maxTemp}°C`;
+    document.getElementById('humidityRange').textContent = `${minHumid} - ${maxHumid}%`;
+
+    // Lux vs Brightness
+    luxBrightChart.data.datasets[0].data = data.map(r => ({ x: r.lux, y: r.brightness }));
+    luxBrightChart.update();
+
+    // Temp vs Humidity
+    tempHumidChart.data.datasets[0].data = data.map(r => ({ x: r.temp, y: r.humidity }));
+    tempHumidChart.update();
+
+    // Trend
+    const last30 = data.slice(-30);
+    trendChart.data.labels = last30.map(r => formatTime(r.timestamp));
+    trendChart.data.datasets[0].data = last30.map(r => r.temp);
+    trendChart.data.datasets[1].data = last30.map(r => r.humidity);
+    trendChart.data.datasets[2].data = last30.map(r => r.brightness);
+    trendChart.update();
+
+    // Distribution
+    distributionChart.data.datasets[0].data = data.map(r => ({ x: r.lux, y: r.brightness, r: r.brightness / 10 }));
+    distributionChart.update();
+  });
+</script>
+
+</body>
+</html>

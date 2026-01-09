@@ -1,0 +1,240 @@
+/* style.css - Smart Street Light Dashboard Theme */
+
+:root {
+    /* Color Palette */
+    --primary: #1d2f7b;
+    --secondary: #2a0f44;
+    --glass: rgba(255, 255, 255, 0.95);
+    --white: #ffffff;
+    --text-dark: #1a1a1a;
+    --text-muted: #666666;
+    
+    /* Layout Sizing */
+    --card-radius: 20px;
+    --transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Global Resets */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    min-height: 100vh;
+    padding: 40px 20px;
+    color: var(--text-dark);
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* --- Welcome Header --- */
+.welcome-section {
+    text-align: center;
+    color: var(--white);
+    margin-bottom: 40px;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.welcome-section h1 {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.welcome-section p {
+    font-size: 18px;
+    opacity: 0.9;
+}
+
+/* --- Quick Status Bar --- */
+.status-bar {
+    background: var(--glass);
+    border-radius: var(--card-radius);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px; /* Reduced to pull Info Panel closer */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.status-item {
+    text-align: center;
+}
+
+.status-item .label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.status-item .value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--secondary);
+}
+
+.status-item .value.online {
+    color: #10b981;
+}
+
+/* --- Info Panel (Now positioned below status bar) --- */
+.info-panel {
+    background: rgba(255, 255, 255, 0.1); /* Slightly lighter for readability */
+    border-radius: var(--card-radius);
+    padding: 30px;
+    color: var(--white);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 40px; /* Space before the Nav Grid */
+    animation: fadeIn 1s ease-out;
+}
+
+.info-panel h3 {
+    margin-bottom: 20px;
+    font-size: 22px;
+    text-align: center;
+}
+
+.feature-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.feature {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 20px;
+    border-radius: 15px;
+    font-size: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.feature:hover {
+    transform: scale(1.02);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.feature strong {
+    color: var(--white);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 15px;
+}
+
+/* --- Organized 2x2 Navigation Grid --- */
+.nav-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 30px;
+    margin-bottom: 40px;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.nav-card {
+    background: var(--glass);
+    border-radius: var(--card-radius);
+    padding: 35px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: var(--transition);
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.nav-card .icon {
+    font-size: 32px;
+    margin-bottom: 20px;
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 1);
+}
+
+.nav-card h2 {
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.nav-card p {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    flex-grow: 1;
+    margin-bottom: 25px;
+}
+
+.nav-card .arrow {
+    align-self: flex-end;
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.nav-card:hover .arrow {
+    transform: translateX(5px);
+}
+
+/* --- Footer --- */
+.main-footer {
+    text-align: center;
+    color: var(--white);
+    margin-top: 50px;
+    opacity: 0.7;
+    font-size: 13px;
+}
+
+/* --- Animations --- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 900px) {
+    .nav-grid {
+        grid-template-columns: 1fr;
+        padding: 0 10px;
+    }
+
+    .status-bar {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+        padding: 20px;
+    }
+
+    .welcome-section h1 {
+        font-size: 32px;
+    }
+}

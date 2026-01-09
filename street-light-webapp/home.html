@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Smart Adaptive Street Light System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style-home.css">
+</head>
+<body>
+
+    <div class="container">
+        <header class="welcome-section">
+            <h1 id="greeting">Welcome Back!</h1>
+            <p>The Smart Street Light System is currently operating efficiently.</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="label">System Status</span>
+                <span class="value online">● Active</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Current Mode</span>
+                <span class="value">Adaptive Eco</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Network</span>
+                <span class="value">Cloud Connected</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Last Sync</span>
+                <span class="value" id="currentTime">--:--</span>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>What our system do</h3>
+            <div class="feature-list">
+                <div class="feature">
+                    <strong>Adaptive Dimming</strong><br>
+                    Adjusts light output based on LDR sensors to save power.
+                </div>
+                <div class="feature">
+                    <strong>Motion Awareness</strong><br>
+                    Instantly boosts brightness when pedestrians are detected.
+                </div>
+                <div class="feature">
+                    <strong>Weather Logging</strong><br>
+                    Correlates humidity and temperature with light performance.
+                </div>
+                <div class="feature">
+                    <strong>Cloud Analysis</strong><br>
+                    Secure Firebase integration for 24/7 data availability.
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-grid">
+            <a href="dashboard.html" class="nav-card">
+                <span class="icon">📊</span>
+                <h2>Main Dashboard</h2>
+                <p>Analyze key metrics, environmental data, and real-time sensor snapshots in one view.</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <a href="realtime.html" class="nav-card">
+                <span class="icon">📈</span>
+                <h2>Live Monitoring</h2>
+                <p>Watch live data pulses. Essential for checking immediate sensor reactions and motion detection.</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <a href="history.html" class="nav-card">
+                <span class="icon">📅</span>
+                <h2>Data History</h2>
+                <p>Review historical performance logs and retrieve past sensor data for reporting.</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <a href="energy.html" class="nav-card">
+                <span class="icon">⚡</span>
+                <h2>Energy Efficiency</h2>
+                <p>View your energy savings. See how much power the adaptive system has saved today.</p>
+                <span class="arrow">→</span>
+            </a>
+        </div>
+
+        <footer class="main-footer">
+            CPC357 Project: Smart Street Light • 2026 Edition
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

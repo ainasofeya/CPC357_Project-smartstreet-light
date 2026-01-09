@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Smart Street Light</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* Specific Page Components (Following Energy.html logic) */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 5px solid #667eea; /* Primary Blue */
+    }
+
+    /* Secondary color cards for analytics (Matches Purple in Energy.html) */
+    .stat-card.analytics {
+      border-left-color: #764ba2; 
+    }
+
+    .stat-card h3 { 
+      font-size: 14px; 
+      color: #666; 
+      margin-bottom: 10px; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value { 
+      font-size: 28px; 
+      font-weight: 700; 
+      color: #333; 
+      margin: 5px 0; 
+    }
+
+    .stat-card small { color: #999; font-size: 12px; }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #444;
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 25px;
+    }
+
+    .chart-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      min-height: 380px;
+    }
+
+    .chart-container { 
+      position: relative; 
+      height: 300px; 
+      width: 100%; 
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+  <div class="logo"> Navigation Bar </div>
+  
+  <nav>
+    <div class="nav-menu">
+      <a href="dashboard.html" class="nav-item">📊 Dashboard</a>
+      <a href="realtime.html" class="nav-item">📈 Real-Time</a>
+      <a href="history.html" class="nav-item">📋 History</a>
+      <a href="energy.html" class="nav-item">⚡ Energy</a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="home.html" class="nav-item">🏠 Back to Home</a>
+    </div>
+  </nav>
+</aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 class="page-title">Dashboard Overview</h1>
+      <div class="topbar-actions">
+        <span id="systemTime" style="color: #888; font-size: 14px; font-weight: 500;"></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section-title">📊 Live Sensor Status</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>🌡 Temperature</h3>
+          <div class="stat-value" id="temp">--</div>
+          <small>Celsius (°C)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💧 Humidity</h3>
+          <div class="stat-value" id="humidity">--</div>
+          <small>Percentage (%)</small>
+        </div>
+        <div class="stat-card">
+          <h3>🔆 Lux</h3>
+          <div class="stat-value" id="lux">--</div>
+          <small>Illuminance (lx)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💡 Brightness</h3>
+          <div class="stat-value" id="brightness">--</div>
+          <small>Current Output %</small>
+        </div>
+      </div>
+
+      <div class="section-title">📈 Analytics Summary</div>
+      <div class="stats-grid">
+        <div class="stat-card analytics">
+          <h3>💾 Energy Saved</h3>
+          <div class="stat-value" id="energySaved">--</div>
+          <small>Efficiency vs Manual</small>
+        </div>
+        <div class="stat-card analytics">
+          <h3>📊 Avg Temperature</h3>
+          <div class="stat-value" id="avgTemp">--</div>
+          <small>Historical Mean</small>
+        </div>
+        <div class="stat-card analytics">
+          <h3>🚶 Motion Events</h3>
+          <div class="stat-value" id="motionCount">--</div>
+          <small>Past 50 Readings</small>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Temperature Trend (Live Pulse)</h2>
+          <div class="chart-container">
+            <canvas id="tempChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h2>Sensor Correlation</h2>
+          <div class="chart-container">
+            <canvas id="correlationChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from './config.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Update Time in Topbar
+  setInterval(() => {
+    document.getElementById('systemTime').innerText = new Date().toLocaleTimeString();
+  }, 1000);
+
+  // Initialize Charts
+  Chart.defaults.color = '#888';
+  
+  const tempChart = new Chart(document.getElementById('tempChart'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Temp (°C)',
+        data: [],
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 2
+      }]
+    },
+    options: { maintainAspectRatio: false }
+  });
+
+  const correlationChart = new Chart(document.getElementById('correlationChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Lux vs Humidity',
+        data: [],
+        backgroundColor: '#764ba2'
+      }]
+    },
+    options: { 
+      maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: 'Lux' } },
+        y: { title: { display: true, text: 'Humidity %' } }
+      }
+    }
+  });
+
+  // Listeners
+  onSnapshot(doc(db, "sensors-log", "latest"), (snap) => {
+    const d = snap.data();
+    if (d) {
+      document.getElementById('temp').textContent = d.temp?.toFixed(1) || '--';
+      document.getElementById('humidity').textContent = d.hum?.toFixed(1) || '--';
+      document.getElementById('lux').textContent = d.lux?.toFixed(0) || '--';
+      document.getElementById('brightness').textContent = d.brightness || '0';
+    }
+  });
+
+  const q = query(collection(db, "sensors-log", "history", "readings"), orderBy("timestamp", "desc"), limit(50));
+  onSnapshot(q, (snapshot) => {
+    const readings = [];
+    snapshot.forEach(doc => readings.unshift(doc.data()));
+
+    const temps = readings.map(r => r.temp);
+    const brights = readings.map(r => r.brightness);
+    
+    // Aggregates
+    document.getElementById('avgTemp').textContent = (temps.reduce((a,b)=>a+b,0)/temps.length).toFixed(1) + '°C';
+    document.getElementById('energySaved').textContent = (100 - (brights.reduce((a,b)=>a+b,0)/brights.length)).toFixed(1) + '%';
+    const motionEvents = readings.filter(r => r.pedestrian || r.vehicle).length;
+    document.getElementById('motionCount').textContent = motionEvents;
+
+    // Chart Updates
+    tempChart.data.labels = readings.slice(-15).map(r => r.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+    tempChart.data.datasets[0].data = readings.slice(-15).map(r => r.temp);
+    tempChart.update();
+
+    correlationChart.data.datasets[0].data = readings.map(r => ({ x: r.lux, y: r.humidity }));
+    correlationChart.update();
+  });
+</script>
+
+</body>
+</html>

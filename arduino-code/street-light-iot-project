@@ -1,0 +1,175 @@
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include <Adafruit_VEML7700.h>
+#include <PubSubClient.h>
+#include <WiFi.h>
+#include <ArduinoJson.h>
+#include <time.h>
+
+// ================= WIFI & MQTT =================
+const char* WIFI_SSID     = "LTE-WiFi_46BA";  // Replace with your WiFi SSID
+const char* WIFI_PASSWORD = "db6c46ba";       // Replace with your WiFi Password 
+const char* MQTT_SERVER   = "34.59.93.42";    // Replace with your MQTT Broker IP
+const char* MQTT_TOPIC    = "street-light-project";     // MQTT Topic
+const int   MQTT_PORT      = 1883;                      // MQTT Port
+
+// ================= TIME SETTINGS =================
+const char* NTP_SERVER    = "pool.ntp.org";
+const long  GMT_OFFSET    = 8 * 3600; 
+const int   DAYLIGHT_OFFSET = 0;
+
+// ================= PINS =================
+#define SDA_PIN 42
+#define SCL_PIN 41
+#define PIR_PIN 4
+#define IR_BEAM_PIN 7
+#define LED_PIN 6
+
+// ================= PWM SETTINGS =================
+#define PWM_FREQ       5000
+#define PWM_RESOLUTION 8
+
+// ================= BRIGHTNESS LEVELS =================
+#define BRIGHT_OFF    0
+#define BRIGHT_LOW    50   // 20% Standby
+#define BRIGHT_MED    150  // 60% Pedestrian
+#define BRIGHT_HIGH   255  // 100% Vehicle
+
+// ================= SENSOR CONSTANTS =================
+#define LUX_CLOUDY_THRESHOLD 500.0
+#define HUM_CLOUDY_THRESHOLD 80.0
+#define DEBOUNCE_DELAY       150 // ms to confirm motion
+
+// ================= OBJECTS & GLOBALS =================
+WiFiClient espClient;
+PubSubClient client(espClient);
+Adafruit_BME280 bme;
+Adafruit_VEML7700 veml;
+
+bool isNight = false;
+int currentPWM = 0;
+
+// ================= HELPERS =================
+
+bool checkNightTime() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) return false;
+  return (timeinfo.tm_hour >= 19 || timeinfo.tm_hour < 6);
+}
+
+void setup_wifi() {
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\nWiFi Connected");
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    if (client.connect("ESP32_Streetlight_Node")) {
+      Serial.println("MQTT Connected");
+    } else { delay(5000); }
+  }
+}
+
+// ================= SETUP =================
+void setup() {
+  Serial.begin(115200);
+  setup_wifi();
+  configTime(GMT_OFFSET, DAYLIGHT_OFFSET, NTP_SERVER);
+  client.setServer(MQTT_SERVER, MQTT_PORT);
+
+  pinMode(PIR_PIN, INPUT);
+  pinMode(IR_BEAM_PIN, INPUT_PULLUP);
+
+  ledcAttach(LED_PIN, PWM_FREQ, PWM_RESOLUTION);
+  Wire.begin(SDA_PIN, SCL_PIN);
+
+  // Initialize Sensors
+  if (!bme.begin(0x76, &Wire)) Serial.println("BME280 Missing!");
+  if (!veml.begin(&Wire)) Serial.println("VEML7700 Missing!");
+
+  Serial.println("System Initialized");
+}
+
+// ================= LOOP =================
+void loop() {
+  if (!client.connected()) reconnect();
+  client.loop();
+
+  // 1. READ ANALOG/ENVIRONMENTAL SENSORS
+  isNight = checkNightTime();
+  float temp = bme.readTemperature();
+  float hum  = bme.readHumidity();
+  float lux  = veml.readLux();
+
+  // 2. FILTERED MOTION DETECTION (Debouncing)
+  static unsigned long pirLastLowTime = 0;
+  static unsigned long beamLastHighTime = 0;
+  
+  bool pirActive = false;
+  bool vehicleActive = false;
+
+  // PIR Filtering
+  if (digitalRead(PIR_PIN) == HIGH) {
+    if (millis() - pirLastLowTime > DEBOUNCE_DELAY) pirActive = true;
+  } else {
+    pirLastLowTime = millis();
+  }
+
+  // IR Beam Filtering
+  if (digitalRead(IR_BEAM_PIN) == LOW) {
+    if (millis() - beamLastHighTime > DEBOUNCE_DELAY) vehicleActive = true;
+  } else {
+    beamLastHighTime = millis();
+  }
+
+  // 3. CLOUDY DETECTION LOGIC
+  bool cloudy = (!isNight && lux < LUX_CLOUDY_THRESHOLD && hum > HUM_CLOUDY_THRESHOLD);
+
+  // 4. DETERMINE BRIGHTNESS
+  int target = BRIGHT_OFF;
+  if (isNight || cloudy) {
+    if (vehicleActive) target = BRIGHT_HIGH;
+    else if (pirActive) target = BRIGHT_MED;
+    else target = BRIGHT_LOW;
+  }
+
+  // Smooth Fading
+  if (currentPWM < target) currentPWM += 10;
+  else if (currentPWM > target) currentPWM -= 5;
+  currentPWM = constrain(currentPWM, 0, 255);
+  ledcWrite(LED_PIN, currentPWM);
+
+  // 5. DATA REPORTING (Every 2 seconds)
+  static unsigned long lastMsg = 0;
+  if (millis() - lastMsg > 2000) {
+    lastMsg = millis();
+
+    // Create JSON Payload
+    StaticJsonDocument<256> doc;
+    doc["temp"] = temp;
+    doc["hum"] = hum;
+    doc["lux"] = lux;
+    doc["brightness"] = currentPWM;
+    doc["pedestrian"] = pirActive;
+    doc["vehicle"] = vehicleActive;
+    doc["isNight"] = isNight;
+    doc["isCloudy"] = cloudy;
+
+    char buffer[256];
+    serializeJson(doc, buffer);
+    client.publish(MQTT_TOPIC, buffer);
+    
+    // Serial Monitor Output
+    Serial.println("--- Environment ---");
+    Serial.printf("Temp: %.1fC | Hum: %.1f%% | Lux: %.1f\n", temp, hum, lux);
+    Serial.printf("PIR: %s | BEAM: %s | Night: %s\n", 
+                  pirActive ? "YES" : "no", vehicleActive ? "YES" : "no", isNight ? "YES" : "no");
+    Serial.printf("Output PWM: %d\n", currentPWM);
+    Serial.println("-------------------");
+  }
+  
+  delay(20); // Fast loop for smooth PWM fading
+}

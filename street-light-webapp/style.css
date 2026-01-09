@@ -1,0 +1,251 @@
+/* style.css - Smart Street Light Dashboard Theme */
+
+:root {
+  /* Color Palette */
+  --primary: #1ca299;
+  --secondary: #764ba2;
+  --bg-color: #c6ced9;
+  --white: #ffffff;
+  --text-main: #1a1a1a;
+  --text-muted: #888888;
+  --sidebar-gradient: linear-gradient(135deg, #304084 0%, #764ba2 100%);
+  
+  /* Layout Sizing */
+  --sidebar-width: 260px;
+  --card-radius: 12px;
+  --transition: all 0.3s ease;
+}
+
+/* Global Resets */
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+  font-family: 'Inter', sans-serif; 
+}
+
+body { 
+  background-color: var(--bg-color); 
+  color: var(--text-main); 
+  overflow-x: hidden; /* Changed from hidden to allow vertical scrolling */
+}
+
+/* --- App Layout --- */
+.app { 
+  display: flex; 
+  height: 100vh; 
+  width: 100vw; 
+}
+
+/* --- Sidebar with Pinned Bottom --- */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-gradient);
+  color: white;
+  padding: 25px 15px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar .logo {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 40px;
+  text-align: center;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.nav-menu {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-bottom {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.7);
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.sidebar .nav-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: translateX(5px);
+}
+
+.sidebar .nav-item.active {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+/* --- Main Viewport --- */
+.main { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  overflow-y: auto; 
+}
+
+.topbar {
+  background: #d6cfde;
+  padding: 25px 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.btn-back {
+  text-decoration: none;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.btn-back:hover { 
+  background: var(--primary); 
+  color: white; 
+}
+
+/* --- Reusable Card & Grid Styles --- */
+.content { 
+  padding: 30px; 
+}
+
+/* Stats Grid (Top row) */
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #444;
+    /* This adds the specific space you requested */
+    margin-top: 30px; 
+    margin-bottom: 15px; 
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    /* Space below the grid before the next section */
+    margin-bottom: 30px; 
+}
+
+.stat-card {
+  background: var(--white);
+  padding: 22px;
+  border-radius: var(--card-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border-left: 5px solid var(--primary);
+  transition: var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-card h3 {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.stat-value { 
+  font-size: 28px; 
+  font-weight: 700; 
+  margin-top: 5px; 
+  color: var(--primary);
+}
+
+/* --- Organized 2x2 Charts Grid --- */
+.charts-grid { 
+  display: grid; 
+  /* Forces exactly 2 columns on desktop */
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 25px; 
+}
+
+.chart-card {
+  background: var(--white);
+  padding: 25px;
+  border-radius: var(--card-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card h2 {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.chart-container { 
+  position: relative; 
+  flex-grow: 1; /* Allow chart to fill the card */
+  width: 100%; 
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr; /* Stacks to 1 column on smaller screens */
+  }
+}
+
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+  .sidebar nav {
+    flex-direction: row;
+  }
+  .nav-bottom {
+    margin-top: 0;
+    margin-left: auto;
+    border-top: none;
+    padding-top: 0;
+  }
+}

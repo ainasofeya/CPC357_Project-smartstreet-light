@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Energy - Smart Street Light Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+  <div class="logo">🌙 Smart Light</div>
+  
+  <nav>
+    <div class="nav-menu">
+      <a href="dashboard.html" class="nav-item">📊 Dashboard</a>
+      <a href="realtime.html" class="nav-item">📈 Real-Time</a>
+      <a href="history.html" class="nav-item">📋 History</a>
+      <a href="energy.html" class="nav-item">⚡ Energy</a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="home.html" class="nav-item">🏠 Back to Home</a>
+    </div>
+  </nav>
+</aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 class="page-title">Energy Analytics</h1>
+      <a href="home.html" class="home-link">← Home</a>
+    </div>
+
+    <div class="content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>💾 Energy Saved</h3>
+          <div class="stat-value" id="energySaved">--</div>
+          <small>Efficiency %</small>
+        </div>
+        <div class="stat-card">
+          <h3>🔆 Max Brightness</h3>
+          <div class="stat-value" id="maxBright">--</div>
+          <small>Peak level %</small>
+        </div>
+        <div class="stat-card">
+          <h3>💡 Avg Brightness</h3>
+          <div class="stat-value" id="avgBright">--</div>
+          <small>Average %</small>
+        </div>
+        <div class="stat-card">
+          <h3>🚶 Motion Events</h3>
+          <div class="stat-value" id="motionEvents">--</div>
+          <small>Total count</small>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Brightness vs Motion (Last 30)</h2>
+          <div class="chart-container"><canvas id="energyChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Lux vs Brightness Correlation</h2>
+          <div class="chart-container"><canvas id="correlationChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from './config.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  Chart.defaults.color = '#888';
+  Chart.defaults.maintainAspectRatio = false;
+
+  const energyChart = new Chart(document.getElementById('energyChart'), {
+    type: 'bar',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Brightness %', data: [], backgroundColor: '#fbbf24' },
+        { label: 'Motion', data: [], backgroundColor: '#4ade80' }
+      ] 
+    }
+  });
+
+  const correlationChart = new Chart(document.getElementById('correlationChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Lux vs Brightness', data: [], backgroundColor: '#ec4899' }] },
+    options: { scales: { x: { title: { display: true, text: 'Lux' } }, y: { title: { display: true, text: 'Brightness %' } } } }
+  });
+
+  const q = query(collection(db, "sensors-log", "history", "readings"), orderBy("timestamp", "desc"), limit(50));
+  onSnapshot(q, (snapshot) => {
+    const data = [];
+    snapshot.forEach(doc => data.unshift(doc.data()));
+
+    const brights = data.map(r => r.brightness);
+    const avgB = (brights.reduce((a, b) => a + b) / brights.length).toFixed(2);
+    const maxB = Math.max(...brights).toFixed(2);
+    const motionCount = data.filter(r => r.motion).length;
+    const energyPercent = (100 - avgB).toFixed(2);
+
+    document.getElementById('energySaved').textContent = energyPercent + '%';
+    document.getElementById('maxBright').textContent = maxB + '%';
+    document.getElementById('avgBright').textContent = avgB + '%';
+    document.getElementById('motionEvents').textContent = motionCount;
+
+    const last30 = data.slice(-30);
+    const labels = last30.map(r => formatTime(r.timestamp));
+    energyChart.data.labels = labels;
+    energyChart.data.datasets[0].data = last30.map(r => r.brightness);
+    energyChart.data.datasets[1].data = last30.map(r => r.motion ? 100 : 0);
+    energyChart.update();
+
+    correlationChart.data.datasets[0].data = data.map(r => ({ x: r.lux, y: r.brightness }));
+    correlationChart.update();
+  });
+</script>
+
+</body>
+</html>

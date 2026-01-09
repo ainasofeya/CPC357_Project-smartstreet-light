@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Street Light - Monitoring Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+  <div class="logo">🌙 Smart Light</div>
+  
+  <nav>
+    <div class="nav-menu">
+      <a href="dashboard.html" class="nav-item">📊 Dashboard</a>
+      <a href="realtime.html" class="nav-item">📈 Real-Time</a>
+      <a href="history.html" class="nav-item">📋 History</a>
+      <a href="energy.html" class="nav-item">⚡ Energy</a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="home.html" class="nav-item">🏠 Back to Home</a>
+    </div>
+  </nav>
+</aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 class="page-title">Dashboard Overview</h1>
+      <a href="home.html" class="home-link">← Home</a>
+    </div>
+
+    <div class="content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>🌡️ Temperature</h3>
+          <div class="stat-value" id="tempValue">--</div>
+          <small>Celsius (°C)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💧 Humidity</h3>
+          <div class="stat-value" id="humidityValue">--</div>
+          <small>Percentage (%)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💡 Brightness</h3>
+          <div class="stat-value" id="brightnessValue">--</div>
+          <small>Current Level (%)</small>
+        </div>
+        <div class="stat-card">
+          <h3>📍 Lux</h3>
+          <div class="stat-value" id="luxValue">--</div>
+          <small>Illuminance (lx)</small>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Live Temperature Pulse</h2>
+          <div class="chart-container"><canvas id="tempChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Historical Trends (Temp vs Humidity)</h2>
+          <div class="chart-container"><canvas id="historyChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Brightness vs Motion Events</h2>
+          <div class="chart-container"><canvas id="energyChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Lux vs Output Correlation</h2>
+          <div class="chart-container"><canvas id="correlationChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from './config.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Helper to format time from Firebase Timestamp
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Chart Global Options
+  Chart.defaults.color = '#888';
+  Chart.defaults.maintainAspectRatio = false;
+
+  // 1. Live Temp Chart
+  const tempChart = new Chart(document.getElementById('tempChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Temp °C', data: [], borderColor: '#ff6384', tension: 0.4, fill: true, backgroundColor: 'rgba(255, 99, 132, 0.1)' }] }
+  });
+
+  // 2. History Chart
+  const historyChart = new Chart(document.getElementById('historyChart'), {
+    type: 'line',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Temp', data: [], borderColor: '#ff6384', yAxisID: 'y' },
+        { label: 'Humidity', data: [], borderColor: '#36a2eb', yAxisID: 'y1' }
+      ]
+    },
+    options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } }
+  });
+
+  // 3. Energy Chart
+  const energyChart = new Chart(document.getElementById('energyChart'), {
+    type: 'bar',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Brightness %', data: [], backgroundColor: '#fbbf24' },
+        { label: 'Motion', data: [], backgroundColor: '#4ade80' }
+      ] 
+    }
+  });
+
+  // 4. Correlation Chart
+  const correlationChart = new Chart(document.getElementById('correlationChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Lux vs Brightness', data: [], backgroundColor: '#ec4899' }] },
+    options: { scales: { x: { title: { display: true, text: 'Lux' } }, y: { title: { display: true, text: 'Brightness %' } } } }
+  });
+
+  // Listener for Latest Stats
+  onSnapshot(doc(db, "sensors-log", "latest"), (snap) => {
+    const d = snap.data();
+    if (d) {
+      document.getElementById('tempValue').textContent = d.temp?.toFixed(1) || '--';
+      document.getElementById('humidityValue').textContent = d.humidity?.toFixed(1) || '--';
+      document.getElementById('brightnessValue').textContent = d.brightness?.toFixed(1) || '--';
+      document.getElementById('luxValue').textContent = d.lux?.toFixed(0) || '--';
+    }
+  });
+
+  // Listener for History (updates all charts)
+  const q = query(collection(db, "sensors-log", "history", "readings"), orderBy("timestamp", "desc"), limit(30));
+  onSnapshot(q, (snapshot) => {
+    const data = [];
+    snapshot.forEach(doc => data.unshift(doc.data()));
+
+    const labels = data.map(r => formatTime(r.timestamp));
+
+    // Update History Chart
+    historyChart.data.labels = labels;
+    historyChart.data.datasets[0].data = data.map(r => r.temp);
+    historyChart.data.datasets[1].data = data.map(r => r.humidity);
+    historyChart.update();
+
+    // Update Temp Chart (Live)
+    tempChart.data.labels = labels.slice(-15);
+    tempChart.data.datasets[0].data = data.slice(-15).map(r => r.temp);
+    tempChart.update();
+
+    // Update Energy Chart
+    energyChart.data.labels = labels.slice(-20);
+    energyChart.data.datasets[0].data = data.slice(-20).map(r => r.brightness);
+    energyChart.data.datasets[1].data = data.slice(-20).map(r => r.motion ? 100 : 0);
+    energyChart.update();
+
+    // Update Correlation
+    correlationChart.data.datasets[0].data = data.map(r => ({ x: r.lux, y: r.brightness }));
+    correlationChart.update();
+  });
+</script>
+
+</body>
+</html>

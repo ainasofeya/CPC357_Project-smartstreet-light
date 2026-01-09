@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time - Smart Street Light Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+  <div class="logo">🌙 Smart Light</div>
+  
+  <nav>
+    <div class="nav-menu">
+      <a href="dashboard.html" class="nav-item">📊 Dashboard</a>
+      <a href="realtime.html" class="nav-item">📈 Real-Time</a>
+      <a href="history.html" class="nav-item">📋 History</a>
+      <a href="energy.html" class="nav-item">⚡ Energy</a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="home.html" class="nav-item">🏠 Back to Home</a>
+    </div>
+  </nav>
+</aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 class="page-title">Real-Time Monitoring</h1>
+      <a href="home.html" class="home-link">← Home</a>
+    </div>
+
+    <div class="content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>🌡️ Temperature</h3>
+          <div class="stat-value" id="tempValue">--</div>
+          <small>Celsius (°C)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💧 Humidity</h3>
+          <div class="stat-value" id="humidityValue">--</div>
+          <small>Percentage (%)</small>
+        </div>
+        <div class="stat-card">
+          <h3>💡 Brightness</h3>
+          <div class="stat-value" id="brightnessValue">--</div>
+          <small>Current Level (%)</small>
+        </div>
+        <div class="stat-card">
+          <h3>📍 Lux</h3>
+          <div class="stat-value" id="luxValue">--</div>
+          <small>Illuminance (lx)</small>
+        </div>
+        <div class="stat-card">
+          <h3>🚶 Motion</h3>
+          <div class="stat-value" id="motionValue">--</div>
+          <small>Detected</small>
+        </div>
+        <div class="stat-card">
+          <h3>⏰ Last Update</h3>
+          <div class="stat-value" id="updateTime">--</div>
+          <small>Time</small>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Live Temperature (Real-Time)</h2>
+          <div class="chart-container"><canvas id="realtimeChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Brightness vs Motion</h2>
+          <div class="chart-container"><canvas id="brightnessMotionChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Humidity Trend (Real-Time)</h2>
+          <div class="chart-container"><canvas id="humidityChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h2>Lux vs Brightness</h2>
+          <div class="chart-container"><canvas id="luxChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from './config.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  Chart.defaults.color = '#888';
+  Chart.defaults.maintainAspectRatio = false;
+
+  const realtimeChart = new Chart(document.getElementById('realtimeChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Temp °C', data: [], borderColor: '#4ade80', tension: 0.4, fill: true, backgroundColor: 'rgba(74, 222, 128, 0.1)' }] }
+  });
+
+  const brightnessMotionChart = new Chart(document.getElementById('brightnessMotionChart'), {
+    type: 'bar',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Brightness %', data: [], backgroundColor: '#fbbf24' },
+        { label: 'Motion', data: [], backgroundColor: '#4ade80' }
+      ] 
+    }
+  });
+
+  const humidityChart = new Chart(document.getElementById('humidityChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Humidity %', data: [], borderColor: '#36a2eb', tension: 0.4, fill: true, backgroundColor: 'rgba(54, 162, 235, 0.1)' }] }
+  });
+
+  const luxChart = new Chart(document.getElementById('luxChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Lux vs Brightness', data: [], backgroundColor: '#ec4899' }] },
+    options: { scales: { x: { title: { display: true, text: 'Lux' } }, y: { title: { display: true, text: 'Brightness %' } } } }
+  });
+
+  // Real-time latest data
+  onSnapshot(doc(db, "sensors-log", "latest"), (snap) => {
+    const d = snap.data();
+    if (d) {
+      document.getElementById('tempValue').textContent = d.temp?.toFixed(1) || '--';
+      document.getElementById('humidityValue').textContent = d.hum?.toFixed(1) || '--';
+      document.getElementById('brightnessValue').textContent = d.brightness?.toFixed(1) || '--';
+      document.getElementById('luxValue').textContent = d.lux?.toFixed(0) || '--';
+      document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+      const hasMotion = d.pedestrian || d.vehicle;
+      document.getElementById('motionValue').textContent = hasMotion ? '🟢 Yes' : '🔴 No';
+    }
+  });
+
+  // Real-time chart updates
+  const q = query(collection(db, "sensors-log", "history", "readings"), orderBy("timestamp", "desc"), limit(15));
+  onSnapshot(q, (snapshot) => {
+    const data = [];
+    snapshot.forEach(doc => data.unshift(doc.data()));
+
+    const labels = data.map(r => formatTime(r.timestamp));
+    
+    // Temperature chart
+    realtimeChart.data.labels = labels;
+    realtimeChart.data.datasets[0].data = data.map(r => r.temp);
+    realtimeChart.update();
+
+    // Brightness vs Motion chart
+    brightnessMotionChart.data.labels = labels;
+    brightnessMotionChart.data.datasets[0].data = data.map(r => r.brightness);
+    brightnessMotionChart.data.datasets[1].data = data.map(r => r.motion ? 100 : 0);
+    brightnessMotionChart.update();
+
+    // Humidity chart
+    humidityChart.data.labels = labels;
+    humidityChart.data.datasets[0].data = data.map(r => r.humidity);
+    humidityChart.update();
+
+    // Lux vs Brightness correlation
+    luxChart.data.datasets[0].data = data.map(r => ({ x: r.lux, y: r.brightness }));
+    luxChart.update();
+  });
+</script>
+
+</body>
+</html>
