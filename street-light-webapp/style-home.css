@@ -55,6 +55,28 @@ body {
 }
 
 /* --- Quick Status Bar --- */
+/* Status Colors */
+.value.online {
+    color: #2ecc71;
+    text-shadow: 0 0 8px rgba(46, 204, 113, 0.3);
+}
+
+.value.offline {
+    color: #e74c3c;
+}
+
+/* Make the values look slightly different when offline */
+.offline-mode .status-item .value {
+    font-style: italic;
+    color: #888;
+}
+
+/* Last Sync highlighting */
+#currentTime {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+}
+
 .status-bar {
     background: var(--glass);
     border-radius: var(--card-radius);
