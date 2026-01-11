@@ -1,4 +1,8 @@
-# Smart Streetlight System (CPC357 Project)
+# Smart Streetlight System (CPC357 Project, Academic Session 2025/2026)
+
+Group Members:
+## Nur Aina Sofeya Binti Mohamed Yusof
+## Nurul Afiqah Binti Azhar
 
 An IoT-based intelligent street lighting system designed to optimize energy consumption while ensuring safety. The system adjusts LED brightness based on time, weather conditions (cloudy/rainy), and real-time motion detection for both pedestrians and vehicles.
 
@@ -16,6 +20,15 @@ An IoT-based intelligent street lighting system designed to optimize energy cons
 * **IoT Connectivity:** Streams real-time environmental data (Temp, Humidity, Lux) and system status to an MQTT broker.
 * **Noise Filtering:** Includes software debouncing to prevent false motion triggers caused by WiFi interference.
 
+## Sustainability & SDG Alignment
+This project directly supports Sustainable Development Goal (SDG) 11: Sustainable Cities and Communities.
+
+* Energy Efficiency (Target 11.6): By utilizing adaptive dimming (adjusting brightness based on ambient light and motion), the system reduces unnecessary electricity usage, achieving potential energy savings of    up to 60%. This directly minimizes the environmental impact and greenhouse gas emissions of urban infrastructure.
+
+* Public Safety (Target 11.7): Integration of PIR and IR sensors ensures that illumination increases automatically for pedestrians and vehicles, promoting safe and inclusive public spaces even during adverse       weather.
+
+* Intelligent Infrastructure: The system demonstrates a scalable, data-driven approach, allowing city planners to leverage IoT for real-time monitoring and efficient resource utilization.
+
 ## Hardware Requirements
 
 * **Microcontroller:** Maker Feather AIoT S3 ESP32
@@ -32,11 +45,11 @@ An IoT-based intelligent street lighting system designed to optimize energy cons
 
 | Component | ESP32 Pin |
 | --- | --- |
-| SDA (I2C) | GPIO 42 |
-| SCL (I2C) | GPIO 41 |
+| SDA (I2C) | Pin SDA |
+| SCL (I2C) | Pin SCL |
 | PIR Sensor | GPIO 4 |
-| IR Break Beam | GPIO 7 |
-| LED Output | GPIO 6 |
+| IR Break Beam | Pin A5 |
+| LED Output | Pin A2 |
 
 ## Server Infrastructure
 Platform: Google Cloud Platform (GCP)
@@ -46,6 +59,17 @@ Service: Compute Engine (VM Instance)
 Instance Type: e2-micro
 
 Broker: Mosquitto MQTT Broker (running on Port 1883)
+
+## Cloud Architecture & Server Infrastructure
+The system utilizes Google Cloud Platform (GCP) for robust data ingestion and storage:
+
+Edge Broker: Mosquitto MQTT Broker running on a GCP Compute Engine (e2-micro).
+
+Ingestion Bridge: A data bridge routes MQTT messages into GCP Pub/Sub.
+
+Data Pipeline: Google Cloud Dataflow consumes the Pub/Sub stream, performing real-time transformation and deduplication.
+
+Database: Cloud Firestore (NoSQL) stores the processed telemetry data, allowing for easy integration with web or mobile dashboards.
 
 
 ## Setup Instructions
@@ -85,9 +109,5 @@ The system publishes a JSON payload to the `street-light-project` topic:
   "isNight": true,
   "isCloudy": false
 }
-
-```
-
----
 
 
