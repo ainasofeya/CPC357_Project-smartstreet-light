@@ -1,8 +1,8 @@
 # Smart Streetlight System (CPC357 Project, Academic Session 2025/2026)
 
 Group Members:
-# Nur Aina Sofeya Binti Mohamed Yusof 
-# Nurul Afiqah Binti Azhar 
+### Nur Aina Sofeya Binti Mohamed Yusof 
+### Nurul Afiqah Binti Azhar 
 
 An IoT-based intelligent street lighting system designed to optimize energy consumption while ensuring safety. The system adjusts LED brightness based on time, weather conditions (cloudy/rainy), and real-time motion detection for both pedestrians and vehicles.
 
@@ -109,6 +109,7 @@ The system publishes a JSON payload to the `street-light-project` topic:
   "isNight": true,
   "isCloudy": false
 }
+
 
 
 
